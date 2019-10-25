@@ -1,0 +1,27 @@
+{
+  "name": "nikita_kalitin/gui_file_upload",
+  "type": "utility",
+  "description": "Simple GUI component for upload file to server ",
+  "keywords": ["GUI", "utility", "upload"],
+  "license": "MIT",
+  "authors":[
+    {
+      "name": "Nikita Kalitin",
+      "email": "nikita.s.kalitin@gmail.com",
+      "homepage": "https://blackchaose.github.io"
+    }
+  ],
+  "require": {
+    "php": ">=7.2.0",
+    "seblucas/tbszip": ">=2.16.1"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^8.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "GUIHelper\\": "src/"
+    }
+  },
+  "minimum-stability": "dev"
+}
