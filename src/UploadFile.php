@@ -42,6 +42,7 @@ class UploadFile
         $this->fileType = strtolower(pathinfo($this->target_file, PATHINFO_EXTENSION));
         $this->log = new Logger(__DIR__ . '/../logs/logger0x.log');
         $this->overwrite = $overwrite;
+        session_start();
     }
 
     public function handlerQuery()
@@ -100,30 +101,9 @@ class UploadFile
                     throw new Exception('file\'s name required');
                 }
 
-                if (!isset($_SERVER['HTTP_X_INDEX'])) {
-                    $this->writeLog('files\'s index required');
-                    throw new Exception('files\'s index required');
-                }
-
-                if (!isset($_SERVER['HTTP_X_TOTAL'])) {
-                    $this->writeLog('files\'s index required');
-                    throw new Exception('total chunks required');
-                }
-
-                if (!preg_match('/^[0-9]+$/', $_SERVER['HTTP_X_INDEX'])) {
-                    $this->writeLog('Index error');
-                    throw new Exception('Index error');
-                }
-
-                if (!preg_match('/^[0-9]+$/', $_SERVER['HTTP_X_TOTAL'])) {
-                    $this->writeLog('Total error');
-                    throw new Exception('Total error');
-                }
-
-
                 if ($_SERVER['HTTP_X_FILE_NAME'] !== $this->fileName) {
-                    $this->writeLog('file name Error');
-                    throw new Exception('Total error');
+                    $this->writeLog('file name Error '.$_SERVER['HTTP_X_FILE_NAME']." ".$this->fileName);
+                    throw new Exception('file name error');
                 }
                 //$index = intval($_SERVER['HTTP_X_INDEX']);
                 //$total = intval($_SERVER['HTTP_X_TOTAL']);
@@ -157,10 +137,10 @@ class UploadFile
     public function sendRequest($data)
     {
         try {
-            header("Access-Control-Allow-Origin: *");
-            header("Access-Control-Allow-Methods: POST");
-            header("Access-Control-Max-Age: 1000");
-            header("Access-Control-Allow-Headers: x-requested-with, x-file-name, x-index, x-total, x-hash, Content-Type, origin, authorization, accept, client-security-token");
+//            header("Access-Control-Allow-Origin: *");
+//            header("Access-Control-Allow-Methods: POST");
+//            header("Access-Control-Max-Age: 1000");
+//            header("Access-Control-Allow-Headers: x-requested-with, x-file-name, x-index, x-total, x-hash, Content-Type, origin, authorization, accept, client-security-token");
             header('Content-Type: application/json');
             echo json_encode($data);
         } catch (Exception $e) {
