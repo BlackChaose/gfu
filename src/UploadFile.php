@@ -7,30 +7,41 @@
 
 namespace GUIHelper;
 
+use GUIHelper\Logger;
+use Exception;
+
 class UploadFile
 {
     private $path_to;
-    private $path_out;
     private $target_file;
+    private $fileName;
     private $uploadOk;
     private $fileType;
+    private $resultMessage;
+    private $nameField; //name field filt to upload
+    private $nameSubmit; //name submit button
+    private $overwrite;
 
+    public $log;
 
-    public function sanitize($path_to, $path_out)
+    public function sanitize($path_to)
     {
 
-        return [$path_to, $path_out];
+        return [$path_to];
     }
 
-    public function __construct($path_to, $path_out = './out')
+    public function __construct($nameField, $nameSubmit, $path_to, $overwrite = false)
     {
-        $res = $this->sanitize($path_to, $path_out);
+        $this->nameField = $nameField;
+        $this->nameSubmit = $nameSubmit;
+        $res = $this->sanitize($path_to);
         $this->path_to = $res[0];
-        $this->path_out = $res[1];
-        $this->target_file = $this->path_to.basename($_FILES["fileToUpload"]["name"]);
+        $this->fileName = basename($_FILES[$this->nameField]["name"]);
+        $this->target_file = $this->path_to . DIRECTORY_SEPARATOR . basename($_FILES[$this->nameField]["name"]);
         $this->uploadOk = 1;
-        $this->fileType = strtolower(pathinfo($this->target_file,PATHINFO_EXTENSION));
-
+        $this->fileType = strtolower(pathinfo($this->target_file, PATHINFO_EXTENSION));
+        $this->log = new Logger(__DIR__ . '/../logs/logger0x.log');
+        $this->overwrite = $overwrite;
     }
 
     public function handlerQuery()
@@ -38,37 +49,120 @@ class UploadFile
 
     }
 
+    public function writeLog($str)
+    {
+        $text = "message: ";
+        $text .= $str;
+        $text .= "(( path to: ";
+        $text .= $this->path_to;
+        $text .= " target file: ";
+        $text .= $this->target_file;
+        $text .= " type of file ";
+        $text .= $this->fileType;
+        $text .= " result of message: ";
+        $text .= $this->resultMessage;
+        $text .= " ))";
+
+        $this->log->log($text);
+    }
+
     public function validateFile()
     {
+        try {
+            if (isset($_POST["submit"])) {
 
-        if (isset($_POST["submit"])) {
+                if (file_exists($this->target_file)) {
+                    if (!$this->overwrite) {
+                        $this->uploadOk = 0;
+                        throw new Exception("Sorry, file already exists.");
+                    } else {
+                        chmod($this->target_file, 0755); //Change the file permissions if allowed
+                        unlink($this->target_file); //remove the file
+                        $this->writeLog('File ' . $this->target_file . " has been deleted for overwrite!");
+                    }
+                }
 
-// Check if file already exists
-            if (file_exists($this->target_file)) {
-                echo "Sorry, file already exists.";
-                $uploadOk = 0;
-            }
-// Check file size
-            if ($_FILES["fileToUpload"]["size"] > 500000) {
-                echo "Sorry, your file is too large.";
-                $uploadOk = 0;
-            }
-// Allow certain file formats
-            if ($this->target_file != "odt") {
-                echo "Sorry, only odt files are allowed.";
-                $uploadOk = 0;
-            }
-// Check if $uploadOk is set to 0 by an error
-            if ($uploadOk == 0) {
-                echo "Sorry, your file was not uploaded.";
-// if everything is ok, try to upload file
-            } else {
-                if (move_uploaded_file($_FILES["fileToUpload"]["tmp_name"], $this->target_file)) {
-                    echo "The file " . basename($_FILES["fileToUpload"]["name"]) . " has been uploaded.";
+                if ($_FILES[$this->nameField]["size"] > 500000) {
+                    throw new Exception("Sorry, your file is too large.");
+                    $this->uploadOk = 0;
+                }
+
+                if ($this->fileType != "odt") {
+                    throw new Exception("Sorry, only odt files are allowed.");
+                    $this->uploadOk = 0;
+                }
+
+                /** attention  -----------------------------------------*/
+                if (!isset($_SERVER['HTTP_X_FILE_NAME'])) {
+                    $this->writeLog('file\'s name required');
+                    throw new Exception('file\'s name required');
+                }
+
+                if (!isset($_SERVER['HTTP_X_INDEX'])) {
+                    $this->writeLog('files\'s index required');
+                    throw new Exception('files\'s index required');
+                }
+
+                if (!isset($_SERVER['HTTP_X_TOTAL'])) {
+                    $this->writeLog('files\'s index required');
+                    throw new Exception('total chunks required');
+                }
+
+                if (!preg_match('/^[0-9]+$/', $_SERVER['HTTP_X_INDEX'])) {
+                    $this->writeLog('Index error');
+                    throw new Exception('Index error');
+                }
+
+                if (!preg_match('/^[0-9]+$/', $_SERVER['HTTP_X_TOTAL'])) {
+                    $this->writeLog('Total error');
+                    throw new Exception('Total error');
+                }
+
+
+                if ($_SERVER['HTTP_X_FILE_NAME'] !== $this->fileName) {
+                    $this->writeLog('file name Error');
+                    throw new Exception('Total error');
+                }
+                //$index = intval($_SERVER['HTTP_X_INDEX']);
+                //$total = intval($_SERVER['HTTP_X_TOTAL']);
+
+                if(md5(file_get_contents($_FILES[$this->nameField]["tmp_name"])) !== $_SERVER['HTTP_X_HASH']){
+                    $this->writeLog('file\'s hash error');
+                    throw new Exception('Hash error');
+                }
+                /** attention  -----------------------------------------*/
+
+                if ($this->uploadOk == 0) {
+                    throw new Exception("Sorry, your file was not uploaded.");
+
                 } else {
-                    echo "Sorry, there was an error uploading your file.";
+                    if (move_uploaded_file($_FILES[$this->nameField]["tmp_name"], $this->target_file)) {
+                        $this->resultMessage = "The file " . basename($_FILES[$this->nameField]["name"]) . " has been uploaded.";
+                        $this->writeLog($this->resultMessage);
+                    } else {
+                        throw new Exception("Sorry, there was an error uploading your file.");
+                    }
                 }
             }
+        } catch (\Exception $e) {
+            $this->writeLog($e->getMessage());
+            $this->resultMessage = 'Result Message: Error! ' . $e->getMessage();
+            return ["status"=>"Error!","result"=>$this->resultMessage];
+        }
+        return ["status"=>"Ok!","result"=>$this->resultMessage];
+    }
+
+    public function sendRequest($data)
+    {
+        try {
+            header("Access-Control-Allow-Origin: *");
+            header("Access-Control-Allow-Methods: POST");
+            header("Access-Control-Max-Age: 1000");
+            header("Access-Control-Allow-Headers: x-requested-with, x-file-name, x-index, x-total, x-hash, Content-Type, origin, authorization, accept, client-security-token");
+            header('Content-Type: application/json');
+            echo json_encode($data);
+        } catch (Exception $e) {
+            $this->writeLog($e->getMessage());
         }
     }
 }

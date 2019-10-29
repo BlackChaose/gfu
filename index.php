@@ -8,6 +8,8 @@ require_once('vendor/autoload.php');
 
 use GUIHelper\UploadFile;
 
+ini_set('display_errors', '1');
+
 session_start();
 
 if (isset($_SESSION['message']) && $_SESSION['message'])
@@ -16,11 +18,10 @@ if (isset($_SESSION['message']) && $_SESSION['message'])
     unset($_SESSION['message']);
 }
 
-$fUp = new UploadFile('./upload');
+
 if (!empty($_POST)) {
-    header('Content-Type: application/json');
-    echo json_encode(["post: " => $_POST, "files: " => $_FILES], true);
-    $fUp->validateFile();
+    $fUp = new UploadFile('upfile', 'submit','./upload', true);
+    $fUp->sendRequest( $fUp->validateFile());
     die;
 }
 
@@ -37,7 +38,7 @@ if (!empty($_POST)) {
 <form id="loadFile" name="loadFile" action="" method="post" enctype="multipart/form-data">
     <label>File to upload:</label>
     <input id="inputFile" type="file" name="upfile" required/>
-    <input id="submit" type="submit" value="Upload!"/>
+    <input id="submit" type="submit" name="submit" value="Upload!"/>
 </form>
 <script>
   document.addEventListener('DOMContentLoaded', function () {
@@ -46,9 +47,17 @@ if (!empty($_POST)) {
     sbmt.addEventListener('click', function (e) {
       e.preventDefault();
       var formData = new FormData(form);
-      formData.append('uploadFile', form.submit);
+      formData.append('upfile', form.submit);
+      formData.append('submit',sbmt.value);
       var xhr = new XMLHttpRequest();
+      xhr.onreadystatechange = function(){
+        if (this.readyState === 4 && this.status === 200) {
+            console.log('!!!');
+        }
+      };
       xhr.open('POST', '/index.php');
+      xhr.setRequestHeader("X-File-Name", form.submit.name);
+      xhr.setRequestHeader("X-File-Index", 0);
       xhr.send(formData);
     });
   });
