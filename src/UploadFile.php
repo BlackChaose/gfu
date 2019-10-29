@@ -93,6 +93,8 @@ class UploadFile
                 }
 
                 /** attention  -----------------------------------------*/
+                /** todo: slice & chunk files & index & hash - for show upload files in realtime! */
+                /** todo: add test & ci */
                 if (!isset($_SERVER['HTTP_X_FILE_NAME'])) {
                     $this->writeLog('file\'s name required');
                     throw new Exception('file\'s name required');
